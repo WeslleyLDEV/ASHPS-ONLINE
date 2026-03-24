@@ -1,246 +1,61 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+// Adicione isso no seu <script> existente
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASHPS - Sistema de Gestão Web</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+async function buscarAssociados() {
+    const termoBusca = document.querySelector('input[type="text"]').value;
+    const tabelaBody = document.querySelector('#view-dashboard tbody');
 
-    <script>
-        // Configuração de cores personalizadas no Tailwind
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#1e3a8a', // Azul escuro
-                        secondary: '#3b82f6', // Azul claro
-                        dark: '#0f172a', // Fundo menu
-                        light: '#f8fafc', // Fundo sistema
-                    }
-                }
-            }
+    // Mostra carregando (opcional)
+    tabelaBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-500">Buscando...</td></tr>';
+
+    try {
+        // Faz a chamada para o seu Back-end (API)
+        const resposta = await fetch(`http://localhost:3000/api/associados?busca=${termoBusca}`);
+        const associados = await resposta.json();
+
+        // Limpa a tabela
+        tabelaBody.innerHTML = '';
+
+        // Se não encontrar ninguém
+        if(associados.length === 0) {
+            tabelaBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-500">Nenhum associado encontrado.</td></tr>';
+            return;
         }
-    </script>
-    <style>
-        /* Pequenos ajustes customizados */
-        
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f1f5f9;
-        }
-        
-        .menu-item.active {
-            background-color: rgba(59, 130, 246, 0.1);
-            color: #3b82f6;
-            border-right: 4px solid #3b82f6;
-        }
-        
-        .menu-item:hover:not(.active) {
-            background-color: rgba(255, 255, 255, 0.05);
-        }
-    </style>
-</head>
 
-<body class="flex h-screen overflow-hidden">
+        // Preenche a tabela com os dados reais vindos do banco
+        associados.forEach(associado => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50 transition-colors';
+            
+            // Aqui definimos a cor do status dinamicamente
+            const statusClass = associado.status === 'Ativo' 
+                ? 'bg-emerald-100 text-emerald-700' 
+                : 'bg-amber-100 text-amber-700';
 
-    <aside class="w-64 bg-dark text-slate-300 flex flex-col hidden md:flex">
-        <div class="h-16 flex items-center justify-center border-b border-slate-700 bg-slate-900">
-            <i class="fa-solid fa-hospital text-secondary text-2xl mr-3"></i>
-            <span class="text-white font-bold text-xl tracking-wider">ASHPS <span class="text-secondary font-light">WEB</span></span>
-        </div>
+            tr.innerHTML = `
+                <td class="px-6 py-4 font-semibold text-slate-900">${associado.matricula}</td>
+                <td class="px-6 py-4">${associado.nome}</td>
+                <td class="px-6 py-4 text-slate-500">${associado.lotacao}</td>
+                <td class="px-6 py-4">${associado.plano}</td>
+                <td class="px-6 py-4"><span class="px-2 py-1 ${statusClass} rounded-full text-xs font-bold">${associado.status}</span></td>
+            `;
+            tabelaBody.appendChild(tr);
+        });
 
-        <nav class="flex-1 overflow-y-auto py-4">
-            <ul class="space-y-1">
-                <li>
-                    <a href="#" class="menu-item active flex items-center px-6 py-3 transition-colors" onclick="mudarAba('dashboard', this)">
-                        <i class="fa-solid fa-chart-pie w-6"></i>
-                        <span class="font-medium">Dashboard</span>
-                    </a>
-                </li>
-                <li class="px-6 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-4">Cadastros</li>
-                <li>
-                    <a href="#" class="menu-item flex items-center px-6 py-3 transition-colors" onclick="mudarAba('associados', this)">
-                        <i class="fa-solid fa-users w-6"></i>
-                        <span class="font-medium">Associados</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="menu-item flex items-center px-6 py-3 transition-colors">
-                        <i class="fa-solid fa-notes-medical w-6"></i>
-                        <span class="font-medium">Planos e Convênios</span>
-                    </a>
-                </li>
-                <li class="px-6 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-4">Operacional</li>
-                <li>
-                    <a href="#" class="menu-item flex items-center px-6 py-3 transition-colors">
-                        <i class="fa-solid fa-file-invoice-dollar w-6"></i>
-                        <span class="font-medium">Folha de Descontos</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="menu-item flex items-center px-6 py-3 transition-colors">
-                        <i class="fa-solid fa-file-pdf w-6"></i>
-                        <span class="font-medium">Relatórios / IR</span>
-                    </a>
-                </li>
-            </ul>
-        </nav>
+    } catch (error) {
+        console.error("Erro ao buscar dados:", error);
+        tabelaBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-500">Erro ao conectar com o servidor.</td></tr>';
+    }
+}
 
-        <div class="p-4 border-t border-slate-700 text-sm text-center">
-            <p>Desenvolvido por</p>
-            <p class="font-bold text-white">Weslley Lemos TI</p>
-        </div>
-    </aside>
-
-    <div class="flex-1 flex flex-col h-screen overflow-hidden">
-
-        <header class="h-16 bg-white shadow-sm flex items-center justify-between px-6 z-10">
-            <div class="flex items-center">
-                <button class="md:hidden text-slate-500 hover:text-primary focus:outline-none">
-                    <i class="fa-solid fa-bars text-xl"></i>
-                </button>
-                <h2 id="tituloPagina" class="text-xl font-semibold text-slate-800 ml-4 md:ml-0">Visão Geral</h2>
-            </div>
-
-            <div class="flex items-center space-x-4">
-                <button class="text-slate-400 hover:text-primary transition-colors">
-                    <i class="fa-solid fa-bell text-xl"></i>
-                </button>
-                <div class="flex items-center cursor-pointer">
-                    <img src="https://ui-avatars.com/api/?name=Admin+ASHPS&background=1e3a8a&color=fff" alt="Avatar" class="h-9 w-9 rounded-full border-2 border-slate-200">
-                    <span class="ml-2 font-medium text-slate-700 hidden md:block">Administrador</span>
-                    <i class="fa-solid fa-chevron-down text-xs text-slate-400 ml-2 hidden md:block"></i>
-                </div>
-            </div>
-        </header>
-
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-6">
-
-            <div id="view-dashboard" class="space-y-6">
-
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-100 flex items-center">
-                        <div class="p-4 rounded-lg bg-blue-50 text-blue-600 mr-4"><i class="fa-solid fa-users text-2xl"></i></div>
-                        <div>
-                            <p class="text-sm font-medium text-slate-500">Total Associados</p>
-                            <p class="text-2xl font-bold text-slate-800">1.248</p>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-100 flex items-center">
-                        <div class="p-4 rounded-lg bg-emerald-50 text-emerald-600 mr-4"><i class="fa-solid fa-heart-pulse text-2xl"></i></div>
-                        <div>
-                            <p class="text-sm font-medium text-slate-500">Vidas nos Planos</p>
-                            <p class="text-2xl font-bold text-slate-800">3.850</p>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-100 flex items-center">
-                        <div class="p-4 rounded-lg bg-purple-50 text-purple-600 mr-4"><i class="fa-solid fa-file-invoice text-2xl"></i></div>
-                        <div>
-                            <p class="text-sm font-medium text-slate-500">Arq. Folha (Mês)</p>
-                            <p class="text-2xl font-bold text-slate-800">R$ 142.500</p>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-100 flex items-center">
-                        <div class="p-4 rounded-lg bg-amber-50 text-amber-600 mr-4"><i class="fa-solid fa-triangle-exclamation text-2xl"></i></div>
-                        <div>
-                            <p class="text-sm font-medium text-slate-500">Pendências</p>
-                            <p class="text-2xl font-bold text-slate-800">12</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-800">Últimos Associados Cadastrados</h3>
-                        <button class="text-sm text-secondary font-medium hover:underline">Ver todos</button>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-slate-50 text-slate-500 text-sm uppercase tracking-wider">
-                                    <th class="px-6 py-3 font-medium">Matrícula</th>
-                                    <th class="px-6 py-3 font-medium">Nome do Servidor</th>
-                                    <th class="px-6 py-3 font-medium">Lotação</th>
-                                    <th class="px-6 py-3 font-medium">Plano Principal</th>
-                                    <th class="px-6 py-3 font-medium">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-slate-700 text-sm divide-y divide-slate-100">
-                                <tr class="hover:bg-slate-50 transition-colors">
-                                    <td class="px-6 py-4 font-semibold text-slate-900">61734660</td>
-                                    <td class="px-6 py-4">João Carlos dos Santos</td>
-                                    <td class="px-6 py-4 text-slate-500">Enfermagem</td>
-                                    <td class="px-6 py-4">UNIMAX</td>
-                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">Ativo</span></td>
-                                </tr>
-                                <tr class="hover:bg-slate-50 transition-colors">
-                                    <td class="px-6 py-4 font-semibold text-slate-900">61728374</td>
-                                    <td class="px-6 py-4">Jeferson da Silva Masui</td>
-                                    <td class="px-6 py-4 text-slate-500">Administrativo</td>
-                                    <td class="px-6 py-4">VERTE SAÚDE</td>
-                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">Ativo</span></td>
-                                </tr>
-                                <tr class="hover:bg-slate-50 transition-colors">
-                                    <td class="px-6 py-4 font-semibold text-slate-900">63711615</td>
-                                    <td class="px-6 py-4">Joema Silveira da Costa</td>
-                                    <td class="px-6 py-4 text-slate-500">Pronto Atendimento</td>
-                                    <td class="px-6 py-4">UNIFÁCIL</td>
-                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">Afastado</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div id="view-associados" class="hidden space-y-6">
-                <div class="flex justify-between items-center">
-                    <div class="relative w-96">
-                        <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400"></i>
-                        <input type="text" placeholder="Buscar por Nome, CPF ou Matrícula..." class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent">
-                    </div>
-                    <button class="bg-primary hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center shadow-sm">
-                        <i class="fa-solid fa-plus mr-2"></i> Novo Associado
-                    </button>
-                </div>
-
-                <div class="bg-white p-10 rounded-xl shadow-sm border border-slate-100 text-center">
-                    <img src="https://cdn-icons-png.flaticon.com/512/3256/3256114.png" alt="Cadastro" class="w-24 mx-auto mb-4 opacity-50">
-                    <h3 class="text-lg font-bold text-slate-700">Tela de Cadastro de Associados</h3>
-                    <p class="text-slate-500 mt-2 max-w-md mx-auto">Aqui será construído o CRUD (Criar, Ler, Editar, Excluir) substituindo as antigas telas em Delphi do sistema local.</p>
-                </div>
-            </div>
-
-        </main>
-    </div>
-
-    <script>
-        function mudarAba(abaId, elementoClicado) {
-            // Remove classe active de todos os menus
-            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-            // Adiciona classe active no clicado
-            elementoClicado.classList.add('active');
-
-            // Esconde todas as views
-            document.getElementById('view-dashboard').classList.add('hidden');
-            document.getElementById('view-associados').classList.add('hidden');
-
-            // Mostra a view correta e altera o título
-            if (abaId === 'dashboard') {
-                document.getElementById('view-dashboard').classList.remove('hidden');
-                document.getElementById('tituloPagina').innerText = "Visão Geral";
-            } else if (abaId === 'associados') {
-                document.getElementById('view-associados').classList.remove('hidden');
-                document.getElementById('tituloPagina').innerText = "Gestão de Associados";
-            }
-        }
-    </script>
-</body>
-
-</html>
+// Escuta a digitação no input de busca para pesquisar automaticamente
+document.addEventListener('DOMContentLoaded', () => {
+    const inputBusca = document.querySelector('input[placeholder="Buscar por Nome, CPF ou Matrícula..."]');
+    if(inputBusca) {
+        // Usa debounce (espera o usuário parar de digitar por 500ms antes de buscar)
+        let timeout = null;
+        inputBusca.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(buscarAssociados, 500);
+        });
+    }
+});
